@@ -1,0 +1,16 @@
+{
+  "name": "Aero Alien War - PAF Thunder",
+  "short_name": "AeroWar",
+  "description": "PAF Thunder Defender Game Made by Hadi - Class Project",
+  "start_url": "/aero-alien-war/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#00ff00",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/532/532261.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
