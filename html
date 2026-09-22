@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>AERO ALIEN WAR - PAF by Hadi</title>
+<link rel="manifest" href="manifest.json">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;touch-action:none;user-select:none}
+body{background:#000;overflow:hidden;font-family:monospace;color:#0f0}
+#game{position:relative;width:100vw;height:100vh}
+#cv{width:100%;height:100%;display:block;background:radial-gradient(ellipse at center,#001122 0%,#000 70%)}
+#ui{position:absolute;top:10px;left:10px;z-index:10;font-size:18px;text-shadow:0 0 5px #0f0}
+#healthWrap{position:absolute;top:10px;right:10px;width:150px;height:20px;border:2px solid #0f0;z-index:10}
+#healthFill{height:100%;width:100%;background:linear-gradient(90deg,#0f0,#ff0)}
+#center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;z-index:20;background:rgba(0,0,0,0.85);padding:25px;border:2px solid #0f0;border-radius:15px;box-shadow:0 0 20px #0f0}
+.btn{padding:12px 30px;font-size:20px;background:#0f0;color:#000;border:none;border-radius:8px;font-weight:bold;cursor:pointer}
+.hidden{display:none !important}
+</style>
+</head>
+<body>
+<div id="game">
+<div id="ui"><div>SCORE:<span id="score">0</span></div><div>LVL:<span id="lvl">1</span></div></div>
+<div id="healthWrap"><div id="healthFill"></div></div>
+<canvas id="cv"></canvas>
+<div id="center">
+<h1>AERO ALIEN WAR</h1>
+<p>PAF Thunder Defender<br>DRAG TO MOVE - TAP TO SHOOT<br><small>🔊 Sound On</small></p>
+<button class="btn" onclick="startGame()">START FIGHT</button>
+<div style="margin-top:15px;font-size:12px;color:#aaa">PAF - Made by Hadi</div>
+</div>
+</div>
+<script>
+// SOUND SYSTEM
+let audioCtx;
+function initAudio(){ if(!audioCtx) audioCtx=new(window.AudioContext||window.webkitAudioContext)();}
+function playTone(f,t,d,v,s){try{initAudio();let o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=t;o.frequency.setValueAtTime(f,audioCtx.currentTime);if(s)o.frequency.exponentialRampToValueAtTime(s,audioCtx.currentTime+d);g.gain.setValueAtTime(v,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+d);o.connect(g);g.connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+d);}catch(e){}}
+const shootSound=()=>playTone(900,'square',0.12,0.25);
+const blastSound=()=>playTone(180,'sawtooth',0.35,0.5,40);
+const hitSound=()=>playTone(120,'triangle',0.3,0.4);
+const gameOverSound=()=>{playTone(200,'sawtooth',0.8,0.5,30);setTimeout(()=>playTone(100,'sawtooth',0.8,0.5,20),200);};
+document.addEventListener('touchstart',initAudio,{once:true});document.addEventListener('click',initAudio,{once:true});
+
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+const scoreEl=document.getElementById('score'),lvlEl=document.getElementById('lvl'),healthFill=document.getElementById('healthFill'),center=document.getElementById('center');
+let W,H,player,bullets,aliens,particles,stars,score,level,health,running;
+function resize(){W=cv.width=innerWidth;H=cv.height=innerHeight;}addEventListener('resize',resize);resize();
+function rand(a,b){return Math.random()*(b-a)+a}
+stars=Array.from({length:120},()=>({x:rand(0,2000),y:rand(0,2000),s:rand(0.5,2.5),sp:rand(0.5,3)}));
+function resetGame(){player={x:W/2,y:H-80,w:40,h:40};bullets=[];aliens=[];particles=[];score=0;level=1;health=100;scoreEl.textContent=0;lvlEl.textContent=1;healthFill.style.width='100%';}
+function spawnAlien(){aliens.push({x:rand(20,W-20),y:-30,r:18+level*1.2,vx:rand(-1,1),vy:rand(1.5,2.5+level*0.3)});}
+function createExplosion(x,y,c,count=12){for(let i=0;i<count;i++)particles.push({x,y,vx:rand(-6,6),vy:rand(-6,6),life:1,dec:rand(0.02,0.05),c:c||`hsl(${rand(0,60)},100%,50%)`,s:rand(2,5)});}
+function startGame(){resetGame();running=true;center.classList.add('hidden');loop();}
+let touchX=0,touchActive=false;
+cv.addEventListener('touchstart',e=>{touchActive=true;touchX=e.touches[0].clientX;if(running){bullets.push({x:player.x,y:player.y-20,vy:-9});shootSound();}e.preventDefault();},{passive:false});
+cv.addEventListener('touchmove',e=>{touchX=e.touches[0].clientX;e.preventDefault();},{passive:false});
+cv.addEventListener('touchend',()=>touchActive=false);
+cv.addEventListener('mousedown',e=>{touchActive=true;touchX=e.clientX;});
+cv.addEventListener('mousemove',e=>{if(touchActive)touchX=e.clientX;});
+cv.addEventListener('mouseup',()=>touchActive=false);
+cv.addEventListener('click',()=>{if(running){bullets.push({x:player.x,y:player.y-20,vy:-9});shootSound();}});
+function update(){if(!running)return;if(touchActive){player.x+= (touchX-player.x)*0.15;}player.x=Math.max(20,Math.min(W-20,player.x));if(Math.random()<0.02+level*0.005)spawnAlien();bullets.forEach((b,i)=>{b.y+=b.vy;if(b.y<0)bullets.splice(i,1);});aliens.forEach((a,ai)=>{a.x+=a.vx;a.y+=a.vy;if(a.x<20||a.x>W-20)a.vx*=-1;if(a.y>H+50){aliens.splice(ai,1);health-=10;hitSound();if(health<=0)gameOver();}bullets.forEach((b,bi)=>{if(Math.hypot(a.x-b.x,a.y-b.y)<a.r+5){aliens.splice(ai,1);bullets.splice(bi,1);score+=10;scoreEl.textContent=score;createExplosion(a.x,a.y,'#0f0',15);blastSound();if(score%100==0){level++;lvlEl.textContent=level;}}});if(Math.hypot(a.x-player.x,a.y-player.y)<a.r+18){aliens.splice(ai,1);createExplosion(a.x,a.y,'#f00',18);health-=15;blastSound();hitSound();if(health<=0)gameOver();}});healthFill.style.width=Math.max(0,health)+'%';if(health<30)healthFill.style.background='#f00';else healthFill.style.background='linear-gradient(90deg,#0f0,#ff0)';particles.forEach((p,i)=>{p.x+=p.vx;p.y+=p.vy;p.life-=p.dec;if(p.life<=0)particles.splice(i,1);});}
+function draw(){ctx.clearRect(0,0,W,H);ctx.fillStyle='#fff';stars.forEach(s=>{s.y+=s.sp;if(s.y>H)s.y=0;ctx.globalAlpha=s.s/3;ctx.fillRect(s.x%W,s.y,s.s,s.s)});ctx.globalAlpha=1;if(running){ctx.save();ctx.translate(player.x,player.y);ctx.fillStyle='#0f0';ctx.shadowColor='#0f0';ctx.shadowBlur=12;ctx.beginPath();ctx.moveTo(0,-20);ctx.lineTo(-15,15);ctx.lineTo(0,8);ctx.lineTo(15,15);ctx.closePath();ctx.fill();ctx.restore();}aliens.forEach(a=>{ctx.save();ctx.translate(a.x,a.y);ctx.fillStyle='#ff0040';ctx.shadowColor='#ff0040';ctx.shadowBlur=10;ctx.beginPath();ctx.arc(0,0,a.r,0,Math.PI*2);ctx.fill();ctx.restore();});ctx.fillStyle='#0ff';ctx.shadowColor='#0ff';ctx.shadowBlur=8;bullets.forEach(b=>ctx.fillRect(b.x-2,b.y,4,12));ctx.shadowBlur=0;particles.forEach(p=>{ctx.globalAlpha=p.life;ctx.fillStyle=p.c;ctx.fillRect(p.x,p.y,p.s,p.s)});ctx.globalAlpha=1;}
+function loop(){update();draw();if(running)requestAnimationFrame(loop);}
+function gameOver(){running=false;gameOverSound();center.innerHTML=`<h1 style='color:#f00'>GAME OVER</h1><p>SCORE:${score}<br>LVL:${level}</p><button class='btn' onclick='startGame()'>PLAY AGAIN</button>`;center.classList.remove('hidden');}
+</script>
+</body>
+</html>
